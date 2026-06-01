@@ -1,0 +1,98 @@
+# Ask Aunt Lurlene
+
+An anonymous Southern advice column built like a modern vintage newspaper.
+Readers submit questions anonymously; Aunt Lurlene logs in, gets breaking-news
+popups, and publishes her answers as newspaper-style columns that **everyone**
+then sees — because the data lives in a shared PostgreSQL database.
+
+- Public visitors: read the column, submit anonymously, react.
+- Aunt Lurlene only: logs in, gets popups, answers, publishes.
+- Published answers update the site for every visitor.
+
+---
+
+## What's inside
+
+| File | Purpose |
+|------|---------|
+| `server.js` | Express server + REST API |
+| `db.js` | PostgreSQL schema + seed data |
+| `public/index.html` | The whole front-end (single page) |
+| `package.json` | Dependencies + start script |
+| `railway.json` | Railway build/deploy config |
+
+Login (change in production!): **username `angie` / password `password123`**
+
+---
+
+## Deploy to Railway (the easy path)
+
+### 1. Put the code on GitHub
+1. Create a new repository on GitHub (e.g. `ask-aunt-lurlene`).
+2. From this folder, push the code:
+   ```bash
+   git init
+   git add .
+   git commit -m "Ask Aunt Lurlene"
+   git branch -M main
+   git remote add origin https://github.com/YOUR-USERNAME/ask-aunt-lurlene.git
+   git push -u origin main
+   ```
+
+### 2. Create the Railway project
+1. Go to https://railway.app and sign in with GitHub.
+2. Click **New Project → Deploy from GitHub repo** and pick your repo.
+3. Railway auto-detects Node and starts building.
+
+### 3. Add the database (this is what makes it shared for everyone)
+1. In the project, click **New → Database → Add PostgreSQL**.
+2. That's it — Railway automatically injects a `DATABASE_URL` variable that the
+   app reads. The tables are created on first boot.
+
+### 4. Set your variables
+In your service's **Variables** tab, add:
+```
+ADMIN_USER=angie
+ADMIN_PASS=password123
+SESSION_SECRET=<paste a long random string>
+NODE_ENV=production
+```
+
+### 5. Generate a public URL
+1. Open the service → **Settings → Networking → Generate Domain**.
+2. Visit the URL. Aunt Lurlene is live.
+
+> Whenever you push to GitHub, Railway redeploys automatically. Your published
+> columns survive redeploys because they're stored in PostgreSQL, not in the app.
+
+---
+
+## Run it locally
+```bash
+npm install
+# You need a local PostgreSQL, or point DATABASE_URL at any Postgres instance:
+export DATABASE_URL="postgresql://user:pass@localhost:5432/lurlene"
+export ADMIN_USER=angie ADMIN_PASS=password123
+npm start
+# open http://localhost:3000
+```
+
+---
+
+## How "only Lurlene gets popups" works
+Popups come from `/api/admin/new-since`, which is protected by the admin
+session. Only a logged-in admin's browser polls it (every 6 seconds), so only
+Lurlene ever sees the breaking-news alerts. Public visitors never touch that
+endpoint.
+
+## How "it updates for everyone" works
+Published answers are written to the `posts` table in PostgreSQL. The public
+column is served from that table and the front page quietly re-fetches it every
+30 seconds, so every visitor stays in sync without refreshing.
+
+## Security notes for real use
+- Change `ADMIN_PASS` and set a strong `SESSION_SECRET`.
+- For higher security, hash the password (e.g. with `bcrypt`) instead of the
+  plain comparison used here for simplicity.
+- Submissions are stored raw; reader-supplied photo URLs are shown only inside
+  the admin dashboard.
